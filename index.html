@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>My Map Page</title>
+    <title>iMinister Map</title>
     <style>
       html, body {
         height: 100%;
@@ -14,23 +14,22 @@
       }
     </style>
   </head>
-
   <body>
     <div id="map"></div>
 
-    <!-- ✅ Load Google Maps -->
+    <!-- ✅ Google Maps API -->
     <script
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap"
       async
       defer>
     </script>
 
-    <!-- ✅ Firebase + Firestore (client-side) -->
+    <!-- ✅ Firebase Module -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
       import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-      // 🔑 Firebase configuration
+      // 🔑 Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
         authDomain: "iminister-map.firebaseapp.com",
@@ -41,60 +40,71 @@
         measurementId: "G-TXWMLGM1G7"
       };
 
-      // 🚀 Initialize Firebase + Firestore
+      // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
 
-      // 🗺️ Initialize Google Map
-      window.initMap = async function () {
-        const center = { lat: 43.816, lng: -111.784 }; // Center of map
+      // Make Firestore accessible to global initMap
+      window.db = db;
+    </script>
+
+    <!-- ✅ Google Maps initMap function (global, non-module) -->
+    <script>
+      async function initMap() {
         const map = new google.maps.Map(document.getElementById("map"), {
           zoom: 13,
-          center: center,
+          center: { lat: 43.816, lng: -111.784 }
         });
 
-        // 🧠 Load existing pins from Firestore
-        const querySnapshot = await getDocs(collection(db, "pins"));
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          addMarker(map, data);
-        });
+        const db = window.db; // Firebase Firestore
 
-        // 🎯 Add new pin on map click
+        // Load existing pins from Firestore
+        try {
+          const snapshot = await getDocs(collection(db, "pins"));
+          snapshot.forEach((doc) => {
+            const pin = doc.data();
+            addMarker(map, pin);
+          });
+        } catch (error) {
+          console.error("Error loading pins:", error);
+        }
+
+        // Add new pin on click
         map.addListener("click", async (event) => {
           const name = prompt("Enter name/title:");
-          const link = prompt("Enter link (optional):");
           if (!name) return;
+          const link = prompt("Enter link (optional):");
 
           const newPin = {
             name,
             lat: event.latLng.lat(),
             lng: event.latLng.lng(),
-            link,
+            link: link || ""
           };
 
-          await addDoc(collection(db, "pins"), newPin);
-          addMarker(map, newPin);
+          try {
+            await addDoc(collection(db, "pins"), newPin);
+            addMarker(map, newPin);
+          } catch (error) {
+            console.error("Error adding pin:", error);
+          }
         });
 
-        // 📍 Helper function to create markers
+        // Helper function to add marker to map
         function addMarker(map, pin) {
           const marker = new google.maps.Marker({
             position: { lat: pin.lat, lng: pin.lng },
             map,
-            title: pin.name,
+            title: pin.name
           });
 
           const infoWindow = new google.maps.InfoWindow({
-            content: `
-              <strong>${pin.name}</strong><br>
-              ${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}
-            `,
+            content: `<strong>${pin.name}</strong><br>${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}`
           });
 
           marker.addListener("click", () => infoWindow.open(map, marker));
         }
-      };
+      }
     </script>
   </body>
 </html>

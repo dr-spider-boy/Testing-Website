@@ -5,7 +5,7 @@
   <style>
     html, body { height: 100%; margin: 0; padding: 0; font-family: Arial; }
     #map { height: 100%; width: 100%; }
-    
+
     #addPinBtn {
       position: absolute; bottom: 20px; right: 80px; width: 50px; height: 50px;
       border-radius: 50%; border: none; background: #4285F4; color: white; font-size: 30px;
@@ -73,111 +73,122 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Expose Firestore globally so initMap can use it
-    window.db = db;
-    window.collection = collection;
-    window.getDocs = getDocs;
-    window.addDoc = addDoc;
-  </script>
-
-  <!-- Google Maps API -->
-  <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap">
-  </script>
-
-  <script>
-    let addPinMode = false;
-    let tempLatLng = null;
-
-    const addPinBtn = document.getElementById("addPinBtn");
-    const messageDiv = document.getElementById("message");
-    const pinModal = document.getElementById("pinModal");
-    const pinForm = document.getElementById("pinForm");
-
-    function showMessage(text,duration=2000){
-      messageDiv.textContent = text;
-      messageDiv.style.opacity = 1;
-      setTimeout(()=>{ messageDiv.style.opacity=0; }, duration);
-    }
-
-    addPinBtn.addEventListener("click",()=>{
-      addPinMode=true;
-      addPinBtn.style.backgroundColor="#0B5ED7";
-      showMessage("Click on the map to place a pin",2500);
-    });
-
     // Global initMap for Google Maps
-    async function initMap(){
+    window.initMap = async function() {
       const map = new google.maps.Map(document.getElementById("map"), {
-        zoom:13,
-        center:{lat:43.816,lng:-111.784}
+        zoom: 13,
+        center: { lat: 43.816, lng: -111.784 }
       });
 
-      const db = window.db;
+      const addPinBtn = document.getElementById("addPinBtn");
+      const messageDiv = document.getElementById("message");
+      const pinModal = document.getElementById("pinModal");
+      const pinForm = document.getElementById("pinForm");
 
-      // Load existing pins
-      try{
-        const snapshot = await window.getDocs(window.collection(db,"pins"));
+      let addPinMode = false;
+      let tempLatLng = null;
+
+      function showMessage(text, duration = 2000) {
+        messageDiv.textContent = text;
+        messageDiv.style.opacity = 1;
+        setTimeout(() => { messageDiv.style.opacity = 0; }, duration);
+      }
+
+      addPinBtn.addEventListener("click", () => {
+        addPinMode = true;
+        addPinBtn.style.backgroundColor = "#0B5ED7";
+        showMessage("Click on the map to place a pin", 2500);
+      });
+
+      // Load pins
+      try {
+        const snapshot = await getDocs(collection(db, "pins"));
         snapshot.forEach(doc => addMarker(map, doc.data()));
-      }catch(e){ console.error(e); showMessage("Error loading pins",3000); }
+      } catch (err) {
+        console.error("Error loading pins:", err);
+        showMessage("Error loading pins", 3000);
+      }
 
       // Map click opens modal
-      map.addListener("click", (event)=>{
-        if(!addPinMode) return;
+      map.addListener("click", (event) => {
+        if (!addPinMode) return;
         tempLatLng = event.latLng;
-        pinModal.style.display="flex";
+        pinModal.style.display = "flex";
       });
 
-      pinForm.addEventListener("submit", async e=>{
+      pinForm.addEventListener("submit", async e => {
         e.preventDefault();
         const name = document.getElementById("pinName").value;
         const needed = document.getElementById("pinNeeded").value;
         const date = document.getElementById("pinDate").value;
         const time = document.getElementById("pinTime").value;
-        if(!name||!tempLatLng) return;
+        if (!name || !tempLatLng) return;
 
         const newPin = { name, needed, date, time, lat: tempLatLng.lat(), lng: tempLatLng.lng() };
-        try{
-          await window.addDoc(window.collection(db,"pins"), newPin);
+
+        try {
+          await addDoc(collection(db, "pins"), newPin);
           addMarker(map, newPin);
-          showMessage("Pin added!",2000);
-        }catch(e){ console.error(e); showMessage("Error adding pin",2500); }
+          showMessage("Pin added!", 2000);
+        } catch (err) {
+          console.error("Error adding pin:", err);
+          showMessage("Error adding pin", 2500);
+        }
 
-        addPinMode=false; addPinBtn.style.backgroundColor="#4285F4";
-        pinModal.style.display="none"; pinForm.reset(); tempLatLng=null;
+        addPinMode = false;
+        addPinBtn.style.backgroundColor = "#4285F4";
+        pinModal.style.display = "none";
+        pinForm.reset();
+        tempLatLng = null;
       });
 
-      pinModal.addEventListener("click", e=>{
-        if(e.target===pinModal){ pinModal.style.display="none"; addPinMode=false; addPinBtn.style.backgroundColor="#4285F4"; pinForm.reset(); tempLatLng=null; }
+      pinModal.addEventListener("click", e => {
+        if (e.target === pinModal) {
+          pinModal.style.display = "none";
+          addPinMode = false;
+          addPinBtn.style.backgroundColor = "#4285F4";
+          pinForm.reset();
+          tempLatLng = null;
+        }
       });
 
-      function getPinColor(pin){
-        if(!pin.date||!pin.time) return "blue";
+      function getPinColor(pin) {
+        if (!pin.date || !pin.time) return "blue";
         const now = new Date();
-        const pinDateTime = new Date(pin.date+"T"+pin.time);
-        const diffH = (pinDateTime-now)/(1000*60*60);
-        if(diffH<=24) return "red";
-        if(diffH<=168) return "orange";
-        if(diffH<=720) return "yellow";
+        const pinDateTime = new Date(pin.date + "T" + pin.time);
+        const diffH = (pinDateTime - now) / (1000*60*60);
+        if (diffH <= 24) return "red";
+        if (diffH <= 168) return "orange";
+        if (diffH <= 720) return "yellow";
         return "blue";
       }
 
-      function addMarker(map,pin){
+      function addMarker(map, pin) {
         const color = getPinColor(pin);
         const marker = new google.maps.Marker({
-          position: {lat:pin.lat, lng:pin.lng},
+          position: { lat: pin.lat, lng: pin.lng },
           map,
           title: pin.name,
           icon: `http://maps.google.com/mapfiles/ms/icons/${color}-dot.png`
         });
 
         const infoWindow = new google.maps.InfoWindow({
-          content:`<div style="line-height:1.4;"><strong>Name:</strong> ${pin.name}<br><strong>What's Needed:</strong> ${pin.needed}<br><strong>Date:</strong> ${pin.date}<br><strong>Time:</strong> ${pin.time}</div>`
+          content: `<div style="line-height:1.4;">
+            <strong>Name:</strong> ${pin.name}<br>
+            <strong>What's Needed:</strong> ${pin.needed}<br>
+            <strong>Date:</strong> ${pin.date}<br>
+            <strong>Time:</strong> ${pin.time}
+          </div>`
         });
 
-        marker.addListener("click",()=>infoWindow.open(map,marker));
+        marker.addListener("click", () => infoWindow.open(map, marker));
       }
-    }
+    };
+  </script>
+
+  <!-- Google Maps -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap">
   </script>
 </body>
 </html>

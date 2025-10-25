@@ -92,8 +92,8 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js"></script>
-
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
       authDomain: "iminister-map.firebaseapp.com",
@@ -165,11 +165,12 @@
         center:{lat:43.816,lng:-111.784}
       });
 
-      // Load pins
+      // Load existing pins
       db.collection("pins").get().then(snapshot=>{
         snapshot.forEach(doc=>{
           addMarker(map, doc.data());
         });
+        showMessage("Pins loaded!", 1500);
       }).catch(err=>{
         console.error("Error loading pins:", err);
         showMessage("Error loading pins", 3000);

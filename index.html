@@ -60,14 +60,7 @@
   <button id="addPinBtn">+</button>
   <div id="message"></div>
 
-  <!-- Google Maps API -->
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap"
-    async
-    defer>
-  </script>
-
-  <!-- Firebase Module -->
+  <!-- Firebase + Map module -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -85,18 +78,15 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ✅ Expose Firestore objects and functions globally so non-module code can access them
+    // Expose Firestore globally
     window.db = db;
     window.collection = collection;
     window.getDocs = getDocs;
     window.addDoc = addDoc;
-  </script>
 
-  <!-- Map and Pin Logic -->
-  <script>
-    let addPinMode = false;
     const addPinBtn = document.getElementById("addPinBtn");
     const messageDiv = document.getElementById("message");
+    let addPinMode = false;
 
     function showMessage(text, duration = 2000) {
       messageDiv.textContent = text;
@@ -112,13 +102,19 @@
       showMessage("Add Pin Mode activated: click on the map to place a pin", 2500);
     });
 
+    // Dynamically load Google Maps API
+    const script = document.createElement("script");
+    script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18";
+    script.defer = true;
+    script.async = true;
+    script.onload = () => initMap(); // call map initialization only after script loads
+    document.head.appendChild(script);
+
     async function initMap() {
       const map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
         center: { lat: 43.816, lng: -111.784 }
       });
-
-      const db = window.db;
 
       // Load existing pins from Firestore
       try {
@@ -129,7 +125,7 @@
         showMessage("Error loading pins", 3000);
       }
 
-      // Map click listener
+      // Add pin when map is clicked in add mode
       map.addListener("click", async (event) => {
         if (!addPinMode) return;
 

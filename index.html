@@ -1,143 +1,174 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>iMinister Map</title>
-    <style>
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-      #map {
-        height: 100%;
-        width: 100%;
-      }
+<head>
+  <title>iMinister Map</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
 
-      /* Floating Add Pin Button */
-      #addPinBtn {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border: none;
-        background-color: #4285F4;
-        color: white;
-        font-size: 30px;
-        cursor: pointer;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        z-index: 5;
-      }
+    /* Floating Add Pin Button */
+    #addPinBtn {
+      position: absolute;
+      bottom: 20px;
+      right: 80px; /* moved left to avoid Google Maps buttons */
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: none;
+      background-color: #4285F4;
+      color: white;
+      font-size: 30px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      z-index: 9999;
+      transition: transform 0.2s, background-color 0.2s;
+    }
 
-      #addPinBtn:hover {
-        background-color: #3367D6;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="map"></div>
-    <button id="addPinBtn">+</button>
+    #addPinBtn:hover {
+      background-color: #3367D6;
+      transform: scale(1.1);
+    }
 
-    <!-- ✅ Google Maps API -->
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap"
-      async
-      defer>
-    </script>
+    /* Floating Notification Message */
+    #message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 15px 25px;
+      border-radius: 10px;
+      font-size: 18px;
+      text-align: center;
+      z-index: 10000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <button id="addPinBtn">+</button>
+  <div id="message"></div>
 
-    <!-- ✅ Firebase Module -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-      import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+  <!-- Google Maps API -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap"
+    async
+    defer>
+  </script>
 
-      // 🔑 Firebase config
-      const firebaseConfig = {
-        apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
-        authDomain: "iminister-map.firebaseapp.com",
-        projectId: "iminister-map",
-        storageBucket: "iminister-map.firebasestorage.app",
-        messagingSenderId: "986772471255",
-        appId: "1:986772471255:web:a3e3d5ec49f61a27815f92",
-        measurementId: "G-TXWMLGM1G7"
-      };
+  <!-- Firebase Module -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
+      authDomain: "iminister-map.firebaseapp.com",
+      projectId: "iminister-map",
+      storageBucket: "iminister-map.firebasestorage.app",
+      messagingSenderId: "986772471255",
+      appId: "1:986772471255:web:a3e3d5ec49f61a27815f92",
+      measurementId: "G-TXWMLGM1G7"
+    };
 
-      // Make Firestore accessible to global initMap
-      window.db = db;
-    </script>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    <!-- ✅ Google Maps initMap function (global) -->
-    <script>
-      let addPinMode = false;
+    window.db = db;
+  </script>
 
-      const addPinBtn = document.getElementById("addPinBtn");
-      addPinBtn.addEventListener("click", () => {
-        addPinMode = true;
-        addPinBtn.style.backgroundColor = "#0B5ED7"; // darker color to show active
-        alert("Add Pin Mode activated: click on the map to place a pin.");
+  <!-- Map and Pin Logic -->
+  <script>
+    let addPinMode = false;
+    const addPinBtn = document.getElementById("addPinBtn");
+    const messageDiv = document.getElementById("message");
+
+    // Show temporary message
+    function showMessage(text, duration = 2000) {
+      messageDiv.textContent = text;
+      messageDiv.style.opacity = 1;
+      setTimeout(() => {
+        messageDiv.style.opacity = 0;
+      }, duration);
+    }
+
+    addPinBtn.addEventListener("click", () => {
+      addPinMode = true;
+      addPinBtn.style.backgroundColor = "#0B5ED7"; // active color
+      showMessage("Add Pin Mode activated: click on the map to place a pin", 2500);
+    });
+
+    async function initMap() {
+      const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: { lat: 43.816, lng: -111.784 }
       });
 
-      async function initMap() {
-        const map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 13,
-          center: { lat: 43.816, lng: -111.784 }
-        });
+      const db = window.db;
 
-        const db = window.db;
-
-        // Load existing pins from Firestore
-        try {
-          const snapshot = await getDocs(collection(db, "pins"));
-          snapshot.forEach((doc) => addMarker(map, doc.data()));
-        } catch (error) {
-          console.error("Error loading pins:", error);
-        }
-
-        // Map click listener
-        map.addListener("click", async (event) => {
-          if (!addPinMode) return; // Only add pins in addPinMode
-
-          const name = prompt("Enter name/title:");
-          if (!name) return;
-          const link = prompt("Enter link (optional):");
-
-          const newPin = {
-            name,
-            lat: event.latLng.lat(),
-            lng: event.latLng.lng(),
-            link: link || ""
-          };
-
-          try {
-            await addDoc(collection(db, "pins"), newPin);
-            addMarker(map, newPin);
-          } catch (error) {
-            console.error("Error adding pin:", error);
-          }
-
-          addPinMode = false; // Reset mode after adding one pin
-          addPinBtn.style.backgroundColor = "#4285F4"; // reset button color
-        });
-
-        // Helper function to add markers
-        function addMarker(map, pin) {
-          const marker = new google.maps.Marker({
-            position: { lat: pin.lat, lng: pin.lng },
-            map,
-            title: pin.name
-          });
-
-          const infoWindow = new google.maps.InfoWindow({
-            content: `<strong>${pin.name}</strong><br>${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}`
-          });
-
-          marker.addListener("click", () => infoWindow.open(map, marker));
-        }
+      // Load existing pins from Firestore
+      try {
+        const snapshot = await getDocs(collection(db, "pins"));
+        snapshot.forEach(doc => addMarker(map, doc.data()));
+      } catch (error) {
+        console.error("Error loading pins:", error);
+        showMessage("Error loading pins", 3000);
       }
-    </script>
-  </body>
+
+      // Map click listener
+      map.addListener("click", async (event) => {
+        if (!addPinMode) return;
+
+        const name = prompt("Enter name/title:");
+        if (!name) return;
+        const link = prompt("Enter link (optional):");
+
+        const newPin = {
+          name,
+          lat: event.latLng.lat(),
+          lng: event.latLng.lng(),
+          link: link || ""
+        };
+
+        try {
+          await addDoc(collection(db, "pins"), newPin);
+          addMarker(map, newPin);
+          showMessage("Pin added successfully!", 2000);
+        } catch (error) {
+          console.error("Error adding pin:", error);
+          showMessage("Error adding pin", 2500);
+        }
+
+        addPinMode = false;
+        addPinBtn.style.backgroundColor = "#4285F4"; // reset button color
+      });
+
+      function addMarker(map, pin) {
+        const marker = new google.maps.Marker({
+          position: { lat: pin.lat, lng: pin.lng },
+          map,
+          title: pin.name
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `<strong>${pin.name}</strong><br>${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}`
+        });
+
+        marker.addListener("click", () => infoWindow.open(map, marker));
+      }
+    }
+  </script>
+</body>
 </html>

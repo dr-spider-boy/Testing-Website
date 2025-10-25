@@ -15,50 +15,82 @@
       }
     </style>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap" async defer></script>
-<script>
-  function initMap() {
-    const center = { lat: 43.816, lng: -111.784 }; // Rexburg, ID
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
+    authDomain: "iminister-map.firebaseapp.com",
+    projectId: "iminister-map",
+    storageBucket: "iminister-map.firebasestorage.app",
+    messagingSenderId: "986772471255",
+    appId: "1:986772471255:web:a3e3d5ec49f61a27815f92",
+    measurementId: "G-TXWMLGM1G7"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+
+  // Initialize the Google Map
+  window.initMap = async function () {
+    const center = { lat: 43.816, lng: -111.784 };
     const map = new google.maps.Map(document.getElementById("map"), {
       zoom: 13,
       center: center,
     });
 
-    // 🧩 List of marker data
-    const locations = [
-      {
-        name: "Bishop's House",
-        position: { lat: 43.8185, lng: -111.7841 },
-        info: `<strong>Bishop's House</strong><br><a href="https://example.com" target="_blank">View Details</a>`,
-      },
-      {
-        name: "Member A",
-        position: { lat: 43.821, lng: -111.78 },
-        info: `<strong>Member A</strong><br><a href="https://example.com/a" target="_blank">Visit Profile</a>`,
-      },
-      {
-        name: "Meetinghouse",
-        position: { lat: 43.815, lng: -111.79 },
-        info: `<strong>Meetinghouse</strong><br><a href="https://example.com/meeting" target="_blank">More Info</a>`,
-      },
-    ];
+    // 🧠 Load existing pins from Firestore
+    const querySnapshot = await getDocs(collection(db, "pins"));
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      addMarker(map, data);
+    });
 
-    // 🧭 Loop through and add each marker
-    locations.forEach((loc) => {
+    // 🎯 Add new pin when map is clicked
+    map.addListener("click", async (event) => {
+      const name = prompt("Enter name/title:");
+      const link = prompt("Enter link (optional):");
+      if (!name) return;
+
+      const newPin = {
+        name,
+        lat: event.latLng.lat(),
+        lng: event.latLng.lng(),
+        link,
+      };
+
+      await addDoc(collection(db, "pins"), newPin);
+      addMarker(map, newPin);
+    });
+
+    // Helper to make markers
+    function addMarker(map, pin) {
       const marker = new google.maps.Marker({
-        position: loc.position,
-        map: map,
-        title: loc.name,
+        position: { lat: pin.lat, lng: pin.lng },
+        map,
+        title: pin.name,
       });
 
       const infoWindow = new google.maps.InfoWindow({
-        content: loc.info,
+        content: `
+          <strong>${pin.name}</strong><br>
+          ${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}
+        `,
       });
 
-      marker.addListener("click", () => {
-        infoWindow.open(map, marker);
-      });
-    });
-  }
+      marker.addListener("click", () => infoWindow.open(map, marker));
+    }
+  };
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&callback=initMap" async defer></script>
+</script>
 </script>
 
     </script>

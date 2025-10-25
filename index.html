@@ -7,6 +7,7 @@
       height: 100%;
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
     }
     #map {
       height: 100%;
@@ -53,12 +54,90 @@
       pointer-events: none;
       transition: opacity 0.5s;
     }
+
+    /* Modal Background */
+    #pinModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 10001;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Modal Content */
+    #pinForm {
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 10px;
+      width: 300px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    #pinForm h2 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    #pinForm label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    #pinForm input {
+      width: 100%;
+      padding: 6px 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    #pinForm button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 10px;
+      background-color: #4285F4;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #pinForm button:hover {
+      background-color: #3367D6;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <button id="addPinBtn">+</button>
   <div id="message"></div>
+
+  <!-- Modal for adding pin -->
+  <div id="pinModal">
+    <form id="pinForm">
+      <h2>Add New Pin</h2>
+      <label for="pinName">Name</label>
+      <input type="text" id="pinName" required>
+
+      <label for="pinNeeded">What's Needed?</label>
+      <input type="text" id="pinNeeded">
+
+      <label for="pinDate">Date</label>
+      <input type="date" id="pinDate">
+
+      <label for="pinTime">Time</label>
+      <input type="time" id="pinTime">
+
+      <button type="submit">Add Pin</button>
+    </form>
+  </div>
 
   <!-- Firebase + Map module -->
   <script type="module">
@@ -86,7 +165,10 @@
 
     const addPinBtn = document.getElementById("addPinBtn");
     const messageDiv = document.getElementById("message");
+    const pinModal = document.getElementById("pinModal");
+    const pinForm = document.getElementById("pinForm");
     let addPinMode = false;
+    let tempLatLng = null; // store clicked location
 
     function showMessage(text, duration = 2000) {
       messageDiv.textContent = text;
@@ -99,15 +181,15 @@
     addPinBtn.addEventListener("click", () => {
       addPinMode = true;
       addPinBtn.style.backgroundColor = "#0B5ED7";
-      showMessage("Add Pin Mode activated: click on the map to place a pin", 2500);
+      showMessage("Click on the map to place a pin", 2500);
     });
 
-    // Dynamically load Google Maps API
+    // Load Google Maps dynamically
     const script = document.createElement("script");
     script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18";
     script.defer = true;
     script.async = true;
-    script.onload = () => initMap(); // initialize after script loads
+    script.onload = () => initMap();
     document.head.appendChild(script);
 
     async function initMap() {
@@ -118,7 +200,7 @@
 
       const db = window.db;
 
-      // Load existing pins from Firestore
+      // Load existing pins
       try {
         const snapshot = await window.getDocs(window.collection(db, "pins"));
         snapshot.forEach(doc => addMarker(map, doc.data()));
@@ -127,23 +209,30 @@
         showMessage("Error loading pins", 3000);
       }
 
-      // Add pin when map is clicked in add mode
-      map.addListener("click", async (event) => {
+      // Map click to open modal
+      map.addListener("click", (event) => {
         if (!addPinMode) return;
+        tempLatLng = event.latLng;
+        pinModal.style.display = "flex";
+      });
 
-        const name = prompt("Enter Name:");
-        if (!name) return;
-        const needed = prompt("What's Needed?");
-        const date = prompt("Date (YYYY-MM-DD):");
-        const time = prompt("Time (HH:MM):");
+      // Handle form submit
+      pinForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("pinName").value;
+        const needed = document.getElementById("pinNeeded").value;
+        const date = document.getElementById("pinDate").value;
+        const time = document.getElementById("pinTime").value;
+
+        if (!name || !tempLatLng) return;
 
         const newPin = {
           name,
           needed,
           date,
           time,
-          lat: event.latLng.lat(),
-          lng: event.latLng.lng()
+          lat: tempLatLng.lat(),
+          lng: tempLatLng.lng()
         };
 
         try {
@@ -155,16 +244,21 @@
           showMessage("Error adding pin", 2500);
         }
 
+        // Reset
         addPinMode = false;
         addPinBtn.style.backgroundColor = "#4285F4";
+        pinModal.style.display = "none";
+        pinForm.reset();
+        tempLatLng = null;
       });
 
+      // Add marker function
       function addMarker(map, pin) {
         const marker = new google.maps.Marker({
           position: { lat: pin.lat, lng: pin.lng },
           map,
           title: pin.name,
-          icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png" // custom red pin
+          icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
         });
 
         const infoWindow = new google.maps.InfoWindow({
@@ -181,6 +275,17 @@
         marker.addListener("click", () => infoWindow.open(map, marker));
       }
     }
+
+    // Close modal when clicking outside form
+    pinModal.addEventListener("click", (e) => {
+      if (e.target === pinModal) {
+        pinModal.style.display = "none";
+        addPinMode = false;
+        addPinBtn.style.backgroundColor = "#4285F4";
+        pinForm.reset();
+        tempLatLng = null;
+      }
+    });
   </script>
 </body>
 </html>

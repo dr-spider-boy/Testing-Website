@@ -3,7 +3,6 @@
   <head>
     <title>My Map Page</title>
     <style>
-      /* Make the map fill the entire screen */
       html, body {
         height: 100%;
         margin: 0;
@@ -14,88 +13,88 @@
         width: 100%;
       }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap" async defer></script>
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
-    authDomain: "iminister-map.firebaseapp.com",
-    projectId: "iminister-map",
-    storageBucket: "iminister-map.firebasestorage.app",
-    messagingSenderId: "986772471255",
-    appId: "1:986772471255:web:a3e3d5ec49f61a27815f92",
-    measurementId: "G-TXWMLGM1G7"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-
-  // Initialize the Google Map
-  window.initMap = async function () {
-    const center = { lat: 43.816, lng: -111.784 };
-    const map = new google.maps.Map(document.getElementById("map"), {
-      zoom: 13,
-      center: center,
-    });
-
-    // 🧠 Load existing pins from Firestore
-    const querySnapshot = await getDocs(collection(db, "pins"));
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      addMarker(map, data);
-    });
-
-    // 🎯 Add new pin when map is clicked
-    map.addListener("click", async (event) => {
-      const name = prompt("Enter name/title:");
-      const link = prompt("Enter link (optional):");
-      if (!name) return;
-
-      const newPin = {
-        name,
-        lat: event.latLng.lat(),
-        lng: event.latLng.lng(),
-        link,
-      };
-
-      await addDoc(collection(db, "pins"), newPin);
-      addMarker(map, newPin);
-    });
-
-    // Helper to make markers
-    function addMarker(map, pin) {
-      const marker = new google.maps.Marker({
-        position: { lat: pin.lat, lng: pin.lng },
-        map,
-        title: pin.name,
-      });
-
-      const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <strong>${pin.name}</strong><br>
-          ${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}
-        `,
-      });
-
-      marker.addListener("click", () => infoWindow.open(map, marker));
-    }
-  };
-</script>
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&callback=initMap" async defer></script>
-</script>
-</script>
-
-    </script>
   </head>
+
   <body>
     <div id="map"></div>
+
+    <!-- ✅ Load Google Maps -->
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap"
+      async
+      defer>
+    </script>
+
+    <!-- ✅ Firebase + Firestore (client-side) -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+      import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+      // 🔑 Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
+        authDomain: "iminister-map.firebaseapp.com",
+        projectId: "iminister-map",
+        storageBucket: "iminister-map.firebasestorage.app",
+        messagingSenderId: "986772471255",
+        appId: "1:986772471255:web:a3e3d5ec49f61a27815f92",
+        measurementId: "G-TXWMLGM1G7"
+      };
+
+      // 🚀 Initialize Firebase + Firestore
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // 🗺️ Initialize Google Map
+      window.initMap = async function () {
+        const center = { lat: 43.816, lng: -111.784 }; // Center of map
+        const map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 13,
+          center: center,
+        });
+
+        // 🧠 Load existing pins from Firestore
+        const querySnapshot = await getDocs(collection(db, "pins"));
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          addMarker(map, data);
+        });
+
+        // 🎯 Add new pin on map click
+        map.addListener("click", async (event) => {
+          const name = prompt("Enter name/title:");
+          const link = prompt("Enter link (optional):");
+          if (!name) return;
+
+          const newPin = {
+            name,
+            lat: event.latLng.lat(),
+            lng: event.latLng.lng(),
+            link,
+          };
+
+          await addDoc(collection(db, "pins"), newPin);
+          addMarker(map, newPin);
+        });
+
+        // 📍 Helper function to create markers
+        function addMarker(map, pin) {
+          const marker = new google.maps.Marker({
+            position: { lat: pin.lat, lng: pin.lng },
+            map,
+            title: pin.name,
+          });
+
+          const infoWindow = new google.maps.InfoWindow({
+            content: `
+              <strong>${pin.name}</strong><br>
+              ${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}
+            `,
+          });
+
+          marker.addListener("click", () => infoWindow.open(map, marker));
+        }
+      };
+    </script>
   </body>
 </html>

@@ -17,7 +17,7 @@
     #addPinBtn {
       position: absolute;
       bottom: 20px;
-      right: 80px; /* moved left to avoid Google Maps buttons */
+      right: 80px; 
       width: 50px;
       height: 50px;
       border-radius: 50%;
@@ -72,7 +72,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyC6ZBvAd5WE2dQ_iVdfVuF_uYq546B8QgI",
       authDomain: "iminister-map.firebaseapp.com",
@@ -86,7 +85,11 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // ✅ Expose Firestore objects and functions globally so non-module code can access them
     window.db = db;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.addDoc = addDoc;
   </script>
 
   <!-- Map and Pin Logic -->
@@ -95,7 +98,6 @@
     const addPinBtn = document.getElementById("addPinBtn");
     const messageDiv = document.getElementById("message");
 
-    // Show temporary message
     function showMessage(text, duration = 2000) {
       messageDiv.textContent = text;
       messageDiv.style.opacity = 1;
@@ -106,7 +108,7 @@
 
     addPinBtn.addEventListener("click", () => {
       addPinMode = true;
-      addPinBtn.style.backgroundColor = "#0B5ED7"; // active color
+      addPinBtn.style.backgroundColor = "#0B5ED7";
       showMessage("Add Pin Mode activated: click on the map to place a pin", 2500);
     });
 
@@ -120,7 +122,7 @@
 
       // Load existing pins from Firestore
       try {
-        const snapshot = await getDocs(collection(db, "pins"));
+        const snapshot = await window.getDocs(window.collection(db, "pins"));
         snapshot.forEach(doc => addMarker(map, doc.data()));
       } catch (error) {
         console.error("Error loading pins:", error);
@@ -143,7 +145,7 @@
         };
 
         try {
-          await addDoc(collection(db, "pins"), newPin);
+          await window.addDoc(window.collection(db, "pins"), newPin);
           addMarker(map, newPin);
           showMessage("Pin added successfully!", 2000);
         } catch (error) {
@@ -152,7 +154,7 @@
         }
 
         addPinMode = false;
-        addPinBtn.style.backgroundColor = "#4285F4"; // reset button color
+        addPinBtn.style.backgroundColor = "#4285F4";
       });
 
       function addMarker(map, pin) {

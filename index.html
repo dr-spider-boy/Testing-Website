@@ -3,23 +3,35 @@
 <head>
   <title>iMinister Map</title>
   <style>
-    html, body { height: 100%; margin:0; padding:0; font-family: Arial; }
-    #map { height:100%; width:100%; }
-    #addPinBtn { position:absolute; bottom:20px; right:80px; width:50px; height:50px;
-      border-radius:50%; border:none; background:#4285F4; color:white; font-size:30px;
-      cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:9999; transition: .2s;}
-    #addPinBtn:hover{background:#3367D6; transform:scale(1.1);}
-    #message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-      background:rgba(0,0,0,0.8); color:#fff; padding:15px 25px; border-radius:10px;
-      font-size:18px; text-align:center; z-index:10000; opacity:0; pointer-events:none; transition:.5s;}
-    #pinModal{display:none; position:fixed;top:0;left:0;width:100%;height:100%;
-      background:rgba(0,0,0,0.5); z-index:10001; justify-content:center; align-items:center;}
-    #pinForm{background:#fff; padding:20px 30px; border-radius:10px; width:300px; box-shadow:0 2px 10px rgba(0,0,0,0.3);}
-    #pinForm h2{text-align:center; margin-top:0; margin-bottom:15px;}
-    #pinForm label{display:block; margin-top:10px; font-weight:bold;}
-    #pinForm input{width:100%; padding:6px 8px; margin-top:5px; border-radius:5px; border:1px solid #ccc;}
-    #pinForm button{margin-top:15px; width:100%; padding:10px; background:#4285F4; color:white; border:none; border-radius:5px; font-size:16px; cursor:pointer;}
-    #pinForm button:hover{background:#3367D6;}
+    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial; }
+    #map { height: 100%; width: 100%; }
+    
+    #addPinBtn {
+      position: absolute; bottom: 20px; right: 80px; width: 50px; height: 50px;
+      border-radius: 50%; border: none; background: #4285F4; color: white; font-size: 30px;
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 9999; transition: .2s;
+    }
+    #addPinBtn:hover { background: #3367D6; transform: scale(1.1); }
+
+    #message {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8); color: #fff; padding: 15px 25px; border-radius: 10px;
+      font-size: 18px; text-align: center; z-index: 10000; opacity: 0; pointer-events: none; transition: .5s;
+    }
+
+    /* Modal */
+    #pinModal {
+      display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.5); z-index:10001; justify-content:center; align-items:center;
+    }
+    #pinForm {
+      background: #fff; padding:20px 30px; border-radius:10px; width:300px; box-shadow:0 2px 10px rgba(0,0,0,0.3);
+    }
+    #pinForm h2 { text-align:center; margin-top:0; margin-bottom:15px; }
+    #pinForm label { display:block; margin-top:10px; font-weight:bold; }
+    #pinForm input { width:100%; padding:6px 8px; margin-top:5px; border-radius:5px; border:1px solid #ccc; }
+    #pinForm button { margin-top:15px; width:100%; padding:10px; background:#4285F4; color:white; border:none; border-radius:5px; font-size:16px; cursor:pointer; }
+    #pinForm button:hover { background:#3367D6; }
   </style>
 </head>
 <body>
@@ -27,6 +39,7 @@
   <button id="addPinBtn">+</button>
   <div id="message"></div>
 
+  <!-- Modal Form -->
   <div id="pinModal">
     <form id="pinForm">
       <h2>Add New Pin</h2>
@@ -42,7 +55,7 @@
     </form>
   </div>
 
-  <!-- Firebase -->
+  <!-- Firebase Module -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -56,68 +69,93 @@
       appId: "1:986772471255:web:a3e3d5ec49f61a27815f92",
       measurementId: "G-TXWMLGM1G7"
     };
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Make initMap global
-    window.initMap = async function() {
+    // Expose Firestore globally so initMap can use it
+    window.db = db;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.addDoc = addDoc;
+  </script>
+
+  <!-- Google Maps API -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap">
+  </script>
+
+  <script>
+    let addPinMode = false;
+    let tempLatLng = null;
+
+    const addPinBtn = document.getElementById("addPinBtn");
+    const messageDiv = document.getElementById("message");
+    const pinModal = document.getElementById("pinModal");
+    const pinForm = document.getElementById("pinForm");
+
+    function showMessage(text,duration=2000){
+      messageDiv.textContent = text;
+      messageDiv.style.opacity = 1;
+      setTimeout(()=>{ messageDiv.style.opacity=0; }, duration);
+    }
+
+    addPinBtn.addEventListener("click",()=>{
+      addPinMode=true;
+      addPinBtn.style.backgroundColor="#0B5ED7";
+      showMessage("Click on the map to place a pin",2500);
+    });
+
+    // Global initMap for Google Maps
+    async function initMap(){
       const map = new google.maps.Map(document.getElementById("map"), {
-        zoom:13, center:{lat:43.816,lng:-111.784}
+        zoom:13,
+        center:{lat:43.816,lng:-111.784}
       });
 
-      const addPinBtn = document.getElementById("addPinBtn");
-      const messageDiv = document.getElementById("message");
-      const pinModal = document.getElementById("pinModal");
-      const pinForm = document.getElementById("pinForm");
-      let addPinMode = false;
-      let tempLatLng = null;
+      const db = window.db;
 
-      function showMessage(text,duration=2000){
-        messageDiv.textContent=text; messageDiv.style.opacity=1;
-        setTimeout(()=>{messageDiv.style.opacity=0;},duration);
-      }
-
-      addPinBtn.addEventListener("click",()=>{addPinMode=true; addPinBtn.style.backgroundColor="#0B5ED7"; showMessage("Click on map to place a pin",2500);});
-
-      // Load pins from Firestore
+      // Load existing pins
       try{
-        const snapshot = await getDocs(collection(db,"pins"));
-        snapshot.forEach(doc=>addMarker(map,doc.data()));
-      }catch(e){console.error("Error loading pins",e); showMessage("Error loading pins",3000);}
+        const snapshot = await window.getDocs(window.collection(db,"pins"));
+        snapshot.forEach(doc => addMarker(map, doc.data()));
+      }catch(e){ console.error(e); showMessage("Error loading pins",3000); }
 
-      map.addListener("click",(event)=>{
+      // Map click opens modal
+      map.addListener("click", (event)=>{
         if(!addPinMode) return;
-        tempLatLng=event.latLng;
+        tempLatLng = event.latLng;
         pinModal.style.display="flex";
       });
 
-      pinForm.addEventListener("submit",async e=>{
+      pinForm.addEventListener("submit", async e=>{
         e.preventDefault();
-        const name=document.getElementById("pinName").value;
-        const needed=document.getElementById("pinNeeded").value;
-        const date=document.getElementById("pinDate").value;
-        const time=document.getElementById("pinTime").value;
+        const name = document.getElementById("pinName").value;
+        const needed = document.getElementById("pinNeeded").value;
+        const date = document.getElementById("pinDate").value;
+        const time = document.getElementById("pinTime").value;
         if(!name||!tempLatLng) return;
 
-        const newPin={name,needed,date,time,lat:tempLatLng.lat(),lng:tempLatLng.lng()};
+        const newPin = { name, needed, date, time, lat: tempLatLng.lat(), lng: tempLatLng.lng() };
         try{
-          await addDoc(collection(db,"pins"),newPin);
-          addMarker(map,newPin);
+          await window.addDoc(window.collection(db,"pins"), newPin);
+          addMarker(map, newPin);
           showMessage("Pin added!",2000);
-        }catch(e){console.error("Error adding pin",e); showMessage("Error adding pin",2500);}
+        }catch(e){ console.error(e); showMessage("Error adding pin",2500); }
+
         addPinMode=false; addPinBtn.style.backgroundColor="#4285F4";
         pinModal.style.display="none"; pinForm.reset(); tempLatLng=null;
       });
 
-      pinModal.addEventListener("click",e=>{
-        if(e.target===pinModal){pinModal.style.display="none"; addPinMode=false; addPinBtn.style.backgroundColor="#4285F4"; pinForm.reset(); tempLatLng=null;}
+      pinModal.addEventListener("click", e=>{
+        if(e.target===pinModal){ pinModal.style.display="none"; addPinMode=false; addPinBtn.style.backgroundColor="#4285F4"; pinForm.reset(); tempLatLng=null; }
       });
 
       function getPinColor(pin){
         if(!pin.date||!pin.time) return "blue";
-        const now=new Date();
-        const pinDateTime=new Date(pin.date+"T"+pin.time);
-        const diffH=(pinDateTime-now)/(1000*60*60);
+        const now = new Date();
+        const pinDateTime = new Date(pin.date+"T"+pin.time);
+        const diffH = (pinDateTime-now)/(1000*60*60);
         if(diffH<=24) return "red";
         if(diffH<=168) return "orange";
         if(diffH<=720) return "yellow";
@@ -125,15 +163,21 @@
       }
 
       function addMarker(map,pin){
-        const color=getPinColor(pin);
-        const marker=new google.maps.Marker({position:{lat:pin.lat,lng:pin.lng},map,title:pin.name,icon:`http://maps.google.com/mapfiles/ms/icons/${color}-dot.png`});
-        const infoWindow=new google.maps.InfoWindow({content:`<div style="line-height:1.4;"><strong>Name:</strong> ${pin.name}<br><strong>What's Needed:</strong> ${pin.needed}<br><strong>Date:</strong> ${pin.date}<br><strong>Time:</strong> ${pin.time}</div>`});
+        const color = getPinColor(pin);
+        const marker = new google.maps.Marker({
+          position: {lat:pin.lat, lng:pin.lng},
+          map,
+          title: pin.name,
+          icon: `http://maps.google.com/mapfiles/ms/icons/${color}-dot.png`
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content:`<div style="line-height:1.4;"><strong>Name:</strong> ${pin.name}<br><strong>What's Needed:</strong> ${pin.needed}<br><strong>Date:</strong> ${pin.date}<br><strong>Time:</strong> ${pin.time}</div>`
+        });
+
         marker.addListener("click",()=>infoWindow.open(map,marker));
       }
-    };
+    }
   </script>
-
-  <!-- Google Maps -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap"></script>
 </body>
 </html>

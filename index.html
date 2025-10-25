@@ -12,10 +12,32 @@
         height: 100%;
         width: 100%;
       }
+
+      /* Floating Add Pin Button */
+      #addPinBtn {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: none;
+        background-color: #4285F4;
+        color: white;
+        font-size: 30px;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        z-index: 5;
+      }
+
+      #addPinBtn:hover {
+        background-color: #3367D6;
+      }
     </style>
   </head>
   <body>
     <div id="map"></div>
+    <button id="addPinBtn">+</button>
 
     <!-- ✅ Google Maps API -->
     <script
@@ -48,29 +70,37 @@
       window.db = db;
     </script>
 
-    <!-- ✅ Google Maps initMap function (global, non-module) -->
+    <!-- ✅ Google Maps initMap function (global) -->
     <script>
+      let addPinMode = false;
+
+      const addPinBtn = document.getElementById("addPinBtn");
+      addPinBtn.addEventListener("click", () => {
+        addPinMode = true;
+        addPinBtn.style.backgroundColor = "#0B5ED7"; // darker color to show active
+        alert("Add Pin Mode activated: click on the map to place a pin.");
+      });
+
       async function initMap() {
         const map = new google.maps.Map(document.getElementById("map"), {
           zoom: 13,
           center: { lat: 43.816, lng: -111.784 }
         });
 
-        const db = window.db; // Firebase Firestore
+        const db = window.db;
 
         // Load existing pins from Firestore
         try {
           const snapshot = await getDocs(collection(db, "pins"));
-          snapshot.forEach((doc) => {
-            const pin = doc.data();
-            addMarker(map, pin);
-          });
+          snapshot.forEach((doc) => addMarker(map, doc.data()));
         } catch (error) {
           console.error("Error loading pins:", error);
         }
 
-        // Add new pin on click
+        // Map click listener
         map.addListener("click", async (event) => {
+          if (!addPinMode) return; // Only add pins in addPinMode
+
           const name = prompt("Enter name/title:");
           if (!name) return;
           const link = prompt("Enter link (optional):");
@@ -88,9 +118,12 @@
           } catch (error) {
             console.error("Error adding pin:", error);
           }
+
+          addPinMode = false; // Reset mode after adding one pin
+          addPinBtn.style.backgroundColor = "#4285F4"; // reset button color
         });
 
-        // Helper function to add marker to map
+        // Helper function to add markers
         function addMarker(map, pin) {
           const marker = new google.maps.Marker({
             position: { lat: pin.lat, lng: pin.lng },

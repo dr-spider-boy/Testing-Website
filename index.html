@@ -129,12 +129,6 @@
       setTimeout(()=>{ messageDiv.style.opacity=0; }, duration);
     }
 
-    addPinBtn.addEventListener("click", ()=>{
-      addPinMode = true;
-      addPinBtn.style.backgroundColor = "#0B5ED7";
-      showMessage("Click on the map to place a pin",2500);
-    });
-
     function getPinColor(pin){
       if(!pin.date || !pin.time) return "blue";
       const now = new Date();
@@ -173,7 +167,7 @@
         center:{lat:43.816,lng:-111.784}
       });
 
-      // Load pins from Firestore
+      // Load pins
       db.collection("pins").get().then(snapshot=>{
         snapshot.forEach(doc=>{
           addMarker(map, doc.data());
@@ -183,14 +177,14 @@
         showMessage("Error loading pins", 3000);
       });
 
-      // Click map to add pin
+      // Map click -> modal
       map.addListener("click", event=>{
         if(!addPinMode) return;
         tempLatLng = event.latLng;
         pinModal.style.display = "flex";
       });
 
-      // Submit pin form
+      // Form submit
       pinForm.addEventListener("submit", e=>{
         e.preventDefault();
         const name = document.getElementById("pinName").value;
@@ -200,6 +194,7 @@
         if(!name || !tempLatLng) return;
 
         const newPin = {name, needed, date, time, lat: tempLatLng.lat(), lng: tempLatLng.lng()};
+
         db.collection("pins").add(newPin).then(()=>{
           addMarker(map, newPin);
           showMessage("Pin added!", 2000);
@@ -215,6 +210,7 @@
         tempLatLng=null;
       });
 
+      // Close modal if click outside form
       pinModal.addEventListener("click", e=>{
         if(e.target===pinModal){
           pinModal.style.display="none";
@@ -223,6 +219,13 @@
           pinForm.reset();
           tempLatLng=null;
         }
+      });
+
+      // Activate add pin button
+      addPinBtn.addEventListener("click", ()=>{
+        addPinMode=true;
+        addPinBtn.style.backgroundColor="#0B5ED7";
+        showMessage("Click on the map to place a pin", 2500);
       });
     }
   </script>

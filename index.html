@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Map Page</title>
+    <style>
+      /* Make the map fill the entire screen */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+    <script>
+      function initMap() {
+        // Create map centered on a default location
+        const center = { lat: 43.816, lng: -111.784 }; // Example: Rexburg, ID
+        const map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 13,
+          center: center,
+        });
+
+        // Add a marker
+        const marker = new google.maps.Marker({
+          position: center,
+          map: map,
+          title: "Example Location",
+        });
+
+        // Add info window for marker
+        const infoWindow = new google.maps.InfoWindow({
+          content: `<div style="font-size:16px">
+                      <strong>Example Ward Member</strong><br>
+                      <a href="https://example.com" target="_blank">Visit Profile</a>
+                    </div>`,
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.open(map, marker);
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+  </body>
+</html>

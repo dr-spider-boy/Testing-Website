@@ -168,7 +168,7 @@
     const pinModal = document.getElementById("pinModal");
     const pinForm = document.getElementById("pinForm");
     let addPinMode = false;
-    let tempLatLng = null; // store clicked location
+    let tempLatLng = null;
 
     function showMessage(text, duration = 2000) {
       messageDiv.textContent = text;
@@ -216,7 +216,7 @@
         pinModal.style.display = "flex";
       });
 
-      // Handle form submit
+      // Form submit to add pin
       pinForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const name = document.getElementById("pinName").value;
@@ -244,7 +244,6 @@
           showMessage("Error adding pin", 2500);
         }
 
-        // Reset
         addPinMode = false;
         addPinBtn.style.backgroundColor = "#4285F4";
         pinModal.style.display = "none";
@@ -252,13 +251,37 @@
         tempLatLng = null;
       });
 
-      // Add marker function
+      // Close modal if clicked outside
+      pinModal.addEventListener("click", (e) => {
+        if (e.target === pinModal) {
+          pinModal.style.display = "none";
+          addPinMode = false;
+          addPinBtn.style.backgroundColor = "#4285F4";
+          pinForm.reset();
+          tempLatLng = null;
+        }
+      });
+
+      // Function to determine pin color based on time
+      function getPinColor(pin) {
+        if (!pin.date || !pin.time) return "blue";
+        const now = new Date();
+        const pinDateTime = new Date(pin.date + "T" + pin.time);
+        const diffHours = (pinDateTime - now) / (1000 * 60 * 60);
+        if (diffHours <= 24) return "red";
+        if (diffHours <= 168) return "orange";
+        if (diffHours <= 720) return "yellow";
+        return "blue";
+      }
+
+      // Function to add a marker
       function addMarker(map, pin) {
+        const color = getPinColor(pin);
         const marker = new google.maps.Marker({
           position: { lat: pin.lat, lng: pin.lng },
           map,
           title: pin.name,
-          icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+          icon: `http://maps.google.com/mapfiles/ms/icons/${color}-dot.png`
         });
 
         const infoWindow = new google.maps.InfoWindow({
@@ -272,20 +295,4 @@
           `
         });
 
-        marker.addListener("click", () => infoWindow.open(map, marker));
-      }
-    }
-
-    // Close modal when clicking outside form
-    pinModal.addEventListener("click", (e) => {
-      if (e.target === pinModal) {
-        pinModal.style.display = "none";
-        addPinMode = false;
-        addPinBtn.style.backgroundColor = "#4285F4";
-        pinForm.reset();
-        tempLatLng = null;
-      }
-    });
-  </script>
-</body>
-</html>
+        marker.addListener("click", () => infoWindow.open(map, marker

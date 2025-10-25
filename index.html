@@ -107,7 +107,7 @@
     script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18";
     script.defer = true;
     script.async = true;
-    script.onload = () => initMap(); // call map initialization only after script loads
+    script.onload = () => initMap(); // initialize after script loads
     document.head.appendChild(script);
 
     async function initMap() {
@@ -115,6 +115,8 @@
         zoom: 13,
         center: { lat: 43.816, lng: -111.784 }
       });
+
+      const db = window.db;
 
       // Load existing pins from Firestore
       try {
@@ -129,15 +131,19 @@
       map.addListener("click", async (event) => {
         if (!addPinMode) return;
 
-        const name = prompt("Enter name/title:");
+        const name = prompt("Enter Name:");
         if (!name) return;
-        const link = prompt("Enter link (optional):");
+        const needed = prompt("What's Needed?");
+        const date = prompt("Date (YYYY-MM-DD):");
+        const time = prompt("Time (HH:MM):");
 
         const newPin = {
           name,
+          needed,
+          date,
+          time,
           lat: event.latLng.lat(),
-          lng: event.latLng.lng(),
-          link: link || ""
+          lng: event.latLng.lng()
         };
 
         try {
@@ -157,11 +163,19 @@
         const marker = new google.maps.Marker({
           position: { lat: pin.lat, lng: pin.lng },
           map,
-          title: pin.name
+          title: pin.name,
+          icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png" // custom red pin
         });
 
         const infoWindow = new google.maps.InfoWindow({
-          content: `<strong>${pin.name}</strong><br>${pin.link ? `<a href="${pin.link}" target="_blank">${pin.link}</a>` : ""}`
+          content: `
+            <div style="line-height:1.4;">
+              <strong>Name:</strong> ${pin.name}<br>
+              <strong>What's Needed:</strong> ${pin.needed}<br>
+              <strong>Date:</strong> ${pin.date}<br>
+              <strong>Time:</strong> ${pin.time}
+            </div>
+          `
         });
 
         marker.addListener("click", () => infoWindow.open(map, marker));

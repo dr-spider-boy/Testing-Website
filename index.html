@@ -15,34 +15,52 @@
       }
     </style>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADtj-pf2vXPtVbsito5U5AFwmKhJnWX18&callback=initMap" async defer></script>
-    <script>
-      function initMap() {
-        // Create map centered on a default location
-        const center = { lat: 43.816, lng: -111.784 }; // Example: Rexburg, ID
-        const map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 13,
-          center: center,
-        });
+<script>
+  function initMap() {
+    const center = { lat: 43.816, lng: -111.784 }; // Rexburg, ID
+    const map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 13,
+      center: center,
+    });
 
-        // Add a marker
-        const marker = new google.maps.Marker({
-          position: center,
-          map: map,
-          title: "Example Location",
-        });
+    // 🧩 List of marker data
+    const locations = [
+      {
+        name: "Bishop's House",
+        position: { lat: 43.8185, lng: -111.7841 },
+        info: `<strong>Bishop's House</strong><br><a href="https://example.com" target="_blank">View Details</a>`,
+      },
+      {
+        name: "Member A",
+        position: { lat: 43.821, lng: -111.78 },
+        info: `<strong>Member A</strong><br><a href="https://example.com/a" target="_blank">Visit Profile</a>`,
+      },
+      {
+        name: "Meetinghouse",
+        position: { lat: 43.815, lng: -111.79 },
+        info: `<strong>Meetinghouse</strong><br><a href="https://example.com/meeting" target="_blank">More Info</a>`,
+      },
+    ];
 
-        // Add info window for marker
-        const infoWindow = new google.maps.InfoWindow({
-          content: `<div style="font-size:16px">
-                      <strong>Example Ward Member</strong><br>
-                      <a href="https://example.com" target="_blank">Visit Profile</a>
-                    </div>`,
-        });
+    // 🧭 Loop through and add each marker
+    locations.forEach((loc) => {
+      const marker = new google.maps.Marker({
+        position: loc.position,
+        map: map,
+        title: loc.name,
+      });
 
-        marker.addListener("click", () => {
-          infoWindow.open(map, marker);
-        });
-      }
+      const infoWindow = new google.maps.InfoWindow({
+        content: loc.info,
+      });
+
+      marker.addListener("click", () => {
+        infoWindow.open(map, marker);
+      });
+    });
+  }
+</script>
+
     </script>
   </head>
   <body>
